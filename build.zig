@@ -24,7 +24,7 @@ pub const Config = struct {
 };
 
 // build sokol into a static library
-pub fn buildSokol(b: *Builder, target: CrossTarget, optimize: Mode, backend: Backend, comptime prefix_path: []const u8) *LibExeObjStep {
+pub fn buildSokol(b: *Builder, target: CrossTarget, optimize: Mode, config: Config, comptime prefix_path: []const u8) *LibExeObjStep {
     const lib = b.addStaticLibrary(.{
         .name = "sokol",
         .target = target,
@@ -152,7 +152,7 @@ pub fn build(b: *Builder) void {
 
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
-    const sokol = buildSokol(b, target, optimize, backend, "");
+    const sokol = buildSokol(b, target, optimize, config, "");
     const examples = .{
         "clear",
         "triangle",
