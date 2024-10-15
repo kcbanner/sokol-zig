@@ -143,6 +143,7 @@ pub const PixelFormat = enum(i32) {
     RGBA32F,
     DEPTH,
     DEPTH_STENCIL,
+    DEPTH32F_STENCIL8,
     BC1_RGBA,
     BC2_RGBA,
     BC3_RGBA,
