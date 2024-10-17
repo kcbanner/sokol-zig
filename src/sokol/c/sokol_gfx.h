@@ -4675,6 +4675,7 @@ inline int sg_append_buffer(sg_buffer buf_id, const sg_range& data) { return sg_
         #define GL_LEQUAL 0x0203
         #define GL_STENCIL_TEST 0x0B90
         #define GL_DITHER 0x0BD0
+        #define GL_DEPTH_COMPONENT24 0x81A6
         #define GL_DEPTH_COMPONENT32F 0x8CAC
         #define GL_EQUAL 0x0202
         #define GL_FRAMEBUFFER 0x8D40
