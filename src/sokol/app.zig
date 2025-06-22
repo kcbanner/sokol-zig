@@ -28,7 +28,8 @@
 //         SOKOL_ASSERT(c)             - your own assert macro (default: assert(c))
 //         SOKOL_UNREACHABLE()         - a guard macro for unreachable code (default: assert(false))
 //         SOKOL_WIN32_FORCE_MAIN      - define this on Win32 to add a main() entry point
-//         SOKOL_WIN32_FORCE_WINMAIN   - define this on Win32 to add a WinMain() entry point (enabled by default unless SOKOL_WIN32_FORCE_MAIN or SOKOL_NO_ENTRY is defined)
+//         SOKOL_WIN32_FORCE_WINMAIN   - define this on Win32 to add a WinMain() entry point (enabled by default unless
+//                                       SOKOL_WIN32_FORCE_MAIN or SOKOL_NO_ENTRY is defined)
 //         SOKOL_NO_ENTRY              - define this if sokol_app.h shouldn't "hijack" the main() function
 //         SOKOL_APP_API_DECL          - public function declaration prefix (default: extern)
 //         SOKOL_API_DECL              - same as SOKOL_APP_API_DECL
@@ -79,6 +80,11 @@
 //     things will happen, see here for details: https://github.com/floooh/sokol/issues/376
 //
 //     On macOS and iOS, the implementation must be compiled as Objective-C.
+//
+//     On Emscripten:
+//         - for WebGL2: add the linker option `-s USE_WEBGL2=1`
+//         - for WebGPU: compile and link with `--use-port=emdawnwebgpu`
+//           (for more exotic situations, read: https://dawn.googlesource.com/dawn/+/refs/heads/main/src/emdawnwebgpu/pkg/README.md)
 //
 //     FEATURE OVERVIEW
 //     ================
@@ -308,6 +314,16 @@
 //             HWND has been cast to a void pointer in order to be tunneled
 //             through code which doesn't include Windows.h.
 //
+//         const void* sapp_x11_get_window(void)
+//             On Linux, get the X11 Window, otherwise a null pointer. The
+//             Window has been cast to a void pointer in order to be tunneled
+//             through code which doesn't include X11/Xlib.h.
+//
+//         const void* sapp_x11_get_display(void)
+//             On Linux, get the X11 Display, otherwise a null pointer. The
+//             Display has been cast to a void pointer in order to be tunneled
+//             through code which doesn't include X11/Xlib.h.
+//
 //         const void* sapp_wgpu_get_device(void)
 //         const void* sapp_wgpu_get_render_view(void)
 //         const void* sapp_wgpu_get_resolve_view(void)
@@ -322,8 +338,9 @@
 //
 //         int sapp_gl_get_major_version(void)
 //         int sapp_gl_get_minor_version(void)
-//             Returns the major and minor version of the GL context
-//             (only for SOKOL_GLCORE, all other backends return zero here, including SOKOL_GLES3)
+//         bool sapp_gl_is_gles(void)
+//             Returns the major and minor version of the GL context and
+//             whether the GL context is a GLES context
 //
 //         const void* sapp_android_get_native_activity(void);
 //             On Android, get the native activity ANativeActivity pointer, otherwise
@@ -430,14 +447,15 @@
 //
 //         if (sapp_mouse_locked()) { ... }
 //
-//     On native platforms, the sapp_lock_mouse() and sapp_mouse_locked()
-//     functions work as expected (mouse lock is activated or deactivated
-//     immediately when sapp_lock_mouse() is called, and sapp_mouse_locked()
-//     also immediately returns the new state after sapp_lock_mouse()
-//     is called.
+//     Note that mouse-lock state may not change immediately after sapp_lock_mouse(true/false)
+//     is called, instead on some platforms the actual state switch may be delayed
+//     to the end of the current frame or even to a later frame.
 //
-//     On the web platform, sapp_lock_mouse() and sapp_mouse_locked() behave
-//     differently, as dictated by the limitations of the HTML5 Pointer Lock API:
+//     The mouse may also be unlocked automatically without calling sapp_lock_mouse(false),
+//     most notably when the application window becomes inactive.
+//
+//     On the web platform there are further restrictions to be aware of, caused
+//     by the limitations of the HTML5 Pointer Lock API:
 //
 //         - sapp_lock_mouse(true) can be called at any time, but it will
 //           only take effect in a 'short-lived input event handler of a specific
@@ -487,6 +505,13 @@
 //                 default:
 //                     break;
 //             }
+//         }
+//
+//     For a 'first person shooter mouse' the following code inside the sokol-app event handler
+//     is recommended somewhere in your frame callback:
+//
+//         if (!sapp_mouse_locked()) {
+//             sapp_lock_mouse(true);
 //         }
 //
 //     CLIPBOARD SUPPORT
@@ -1662,11 +1687,12 @@ pub const LogItem = enum(i32) {
     ANDROID_CREATE_THREAD_PIPE_FAILED,
     ANDROID_NATIVE_ACTIVITY_CREATE_SUCCESS,
     WGPU_SWAPCHAIN_CREATE_SURFACE_FAILED,
-    WGPU_SWAPCHAIN_CREATE_SWAPCHAIN_FAILED,
+    WGPU_SWAPCHAIN_SURFACE_GET_CAPABILITIES_FAILED,
     WGPU_SWAPCHAIN_CREATE_DEPTH_STENCIL_TEXTURE_FAILED,
     WGPU_SWAPCHAIN_CREATE_DEPTH_STENCIL_VIEW_FAILED,
     WGPU_SWAPCHAIN_CREATE_MSAA_TEXTURE_FAILED,
     WGPU_SWAPCHAIN_CREATE_MSAA_VIEW_FAILED,
+    WGPU_SWAPCHAIN_GETCURRENTTEXTURE_FAILED,
     WGPU_REQUEST_DEVICE_STATUS_ERROR,
     WGPU_REQUEST_DEVICE_STATUS_UNKNOWN,
     WGPU_REQUEST_ADAPTER_STATUS_UNAVAILABLE,
@@ -2245,20 +2271,44 @@ pub fn glGetFramebuffer() u32 {
     return sapp_gl_get_framebuffer();
 }
 
-/// GL: get major version (only valid for desktop GL)
+/// GL: get major version
 extern fn sapp_gl_get_major_version() i32;
 
-/// GL: get major version (only valid for desktop GL)
+/// GL: get major version
 pub fn glGetMajorVersion() i32 {
     return sapp_gl_get_major_version();
 }
 
-/// GL: get minor version (only valid for desktop GL)
+/// GL: get minor version
 extern fn sapp_gl_get_minor_version() i32;
 
-/// GL: get minor version (only valid for desktop GL)
+/// GL: get minor version
 pub fn glGetMinorVersion() i32 {
     return sapp_gl_get_minor_version();
+}
+
+/// GL: return true if the context is GLES
+extern fn sapp_gl_is_gles() bool;
+
+/// GL: return true if the context is GLES
+pub fn glIsGles() bool {
+    return sapp_gl_is_gles();
+}
+
+/// X11: get Window
+extern fn sapp_x11_get_window() ?*const anyopaque;
+
+/// X11: get Window
+pub fn x11GetWindow() ?*const anyopaque {
+    return sapp_x11_get_window();
+}
+
+/// X11: get Display
+extern fn sapp_x11_get_display() ?*const anyopaque;
+
+/// X11: get Display
+pub fn x11GetDisplay() ?*const anyopaque {
+    return sapp_x11_get_display();
 }
 
 /// Android: get native activity handle
