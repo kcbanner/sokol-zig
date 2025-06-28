@@ -5538,4 +5538,3 @@ extern fn sg_gl_query_attachments_info(Attachments) GlAttachmentsInfo;
 pub fn glQueryAttachmentsInfo(atts: Attachments) GlAttachmentsInfo {
     return sg_gl_query_attachments_info(atts);
 }
-
