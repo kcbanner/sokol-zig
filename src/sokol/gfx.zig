@@ -2090,10 +2090,6 @@ pub const PixelFormat = enum(i32) {
     RGBA32F,
     DEPTH,
     DEPTH_STENCIL,
-    DEPTH24PLUS,
-    DEPTH24PLUS_STENCIL8,
-    DEPTH32F,
-    DEPTH32F_STENCIL8,
     BC1_RGBA,
     BC2_RGBA,
     BC3_RGBA,
@@ -3333,6 +3329,8 @@ pub const SamplerDesc = extern struct {
 ///     source code, you can provide an optional target string via
 ///     sg_shader_stage_desc.d3d11_target, the default target is "vs_4_0" for the
 ///     vertex shader stage and "ps_4_0" for the pixel shader stage.
+///     You may optionally provide the file path to enable the default #include handler
+///     behavior when compiling source code.
 pub const ShaderStage = enum(i32) {
     NONE,
     VERTEX,
@@ -3345,6 +3343,7 @@ pub const ShaderFunction = extern struct {
     bytecode: Range = .{},
     entry: [*c]const u8 = null,
     d3d11_target: [*c]const u8 = null,
+    d3d11_filepath: [*c]const u8 = null,
 };
 
 pub const ShaderAttrBaseType = enum(i32) {
@@ -4418,7 +4417,7 @@ pub const Environment = extern struct {
 ///     ends (instead of having to guess, or add a manual 'new-frame'
 ///     function.
 pub const CommitListener = extern struct {
-    func: ?*const fn (?*anyopaque) callconv(.C) void = null,
+    func: ?*const fn (?*anyopaque) callconv(.c) void = null,
     user_data: ?*anyopaque = null,
 };
 
@@ -4429,8 +4428,8 @@ pub const CommitListener = extern struct {
 ///     alloc_fn and free_fn function must be provided (e.g. it's not valid to
 ///     override one function but not the other).
 pub const Allocator = extern struct {
-    alloc_fn: ?*const fn (usize, ?*anyopaque) callconv(.C) ?*anyopaque = null,
-    free_fn: ?*const fn (?*anyopaque, ?*anyopaque) callconv(.C) void = null,
+    alloc_fn: ?*const fn (usize, ?*anyopaque) callconv(.c) ?*anyopaque = null,
+    free_fn: ?*const fn (?*anyopaque, ?*anyopaque) callconv(.c) void = null,
     user_data: ?*anyopaque = null,
 };
 
@@ -4444,7 +4443,7 @@ pub const Allocator = extern struct {
 ///     compatible logger function in the sg_setup() call
 ///     (for instance the standard logging function from sokol_log.h).
 pub const Logger = extern struct {
-    func: ?*const fn ([*c]const u8, u32, u32, [*c]const u8, u32, [*c]const u8, ?*anyopaque) callconv(.C) void = null,
+    func: ?*const fn ([*c]const u8, u32, u32, [*c]const u8, u32, [*c]const u8, ?*anyopaque) callconv(.c) void = null,
     user_data: ?*anyopaque = null,
 };
 
@@ -5538,3 +5537,4 @@ extern fn sg_gl_query_attachments_info(Attachments) GlAttachmentsInfo;
 pub fn glQueryAttachmentsInfo(atts: Attachments) GlAttachmentsInfo {
     return sg_gl_query_attachments_info(atts);
 }
+

@@ -227,6 +227,24 @@
 //
 //         simgui_shutdown()
 //
+//     ON ATTACHING YOUR OWN FONTS
+//     ===========================
+//     Since Dear ImGui 1.92.0 using non-default fonts has been greatly simplified:
+//
+//     First, call `simgui_setup()` with the `.no_default_font` so that
+//     sokol_imgui.h skips adding the default font.
+//
+//     ...then simply call `AddFontDefault()` or `AddFontFromMemoryTTF()` on
+//     the Dear ImGui IO object, everything else is taken care of automatically.
+//
+//     Specifically, do *NOT*:
+//         - call the deprecated `GetTexDataAsRGBA32()` function
+//         - create a sokol-gfx image object for the font atlas
+//         - set the `Font->TexID` on the ImGui IO object
+//
+//     All those things are now handled inside sokol_imgui.h via a new 'texture update'
+//     callback which is called by Dear ImGui whenever the state of the font atlas
+//     texture changes.
 //
 //     ON USER-PROVIDED IMAGES AND SAMPLERS
 //     ====================================
@@ -261,6 +279,21 @@
 //
 //         sg_image img = simgui_image_from_imtextureid(imtex_id);
 //         sg_sampler smp = simgui_sampler_from_imtextureid(imtex_id);
+//
+//     NOTE on C bindings since Dear ImGui 1.92.0:
+//
+//         Since Dear ImGui v1.92.0 the ImGui::Image function takes an
+//         ImTextureRef object instead of ImTextureID. In C++ this doesn't
+//         require a code change since the ImTextureRef is automatically constructed
+//         from the ImTextureID.
+//
+//         In C this doesn't work and you need to explicitly create an
+//         ImTextureRef struct, for instance:
+//
+//             igImage((ImTextureRef){ ._TexID = my_tex_id }, ...);
+//
+//         Currently Dear Bindings is missing a wrapper function for this,
+//         also see: https://github.com/dearimgui/dear_bindings/issues/99
 //
 //
 //     MEMORY ALLOCATION OVERRIDE
@@ -399,8 +432,8 @@ pub const LogItem = enum(i32) {
 ///     alloc_fn and free_fn function must be provided (e.g. it's not valid to
 ///     override one function but not the other).
 pub const Allocator = extern struct {
-    alloc_fn: ?*const fn (usize, ?*anyopaque) callconv(.C) ?*anyopaque = null,
-    free_fn: ?*const fn (?*anyopaque, ?*anyopaque) callconv(.C) void = null,
+    alloc_fn: ?*const fn (usize, ?*anyopaque) callconv(.c) ?*anyopaque = null,
+    free_fn: ?*const fn (?*anyopaque, ?*anyopaque) callconv(.c) void = null,
     user_data: ?*anyopaque = null,
 };
 
@@ -413,7 +446,7 @@ pub const Allocator = extern struct {
 ///     compile in debug mode (e.g. NDEBUG *not* defined) and install
 ///     a logger (for instance the standard logging function from sokol_log.h).
 pub const Logger = extern struct {
-    func: ?*const fn ([*c]const u8, u32, u32, [*c]const u8, u32, [*c]const u8, ?*anyopaque) callconv(.C) void = null,
+    func: ?*const fn ([*c]const u8, u32, u32, [*c]const u8, u32, [*c]const u8, ?*anyopaque) callconv(.c) void = null,
     user_data: ?*anyopaque = null,
 };
 
@@ -556,17 +589,5 @@ extern fn simgui_shutdown() void;
 
 pub fn shutdown() void {
     simgui_shutdown();
-}
-
-extern fn simgui_create_fonts_texture([*c]const FontTexDesc) void;
-
-pub fn createFontsTexture(desc: FontTexDesc) void {
-    simgui_create_fonts_texture(&desc);
-}
-
-extern fn simgui_destroy_fonts_texture() void;
-
-pub fn destroyFontsTexture() void {
-    simgui_destroy_fonts_texture();
 }
 
